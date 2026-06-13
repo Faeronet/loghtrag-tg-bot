@@ -16,6 +16,15 @@ class Settings(BaseSettings):
             return value.strip().strip('"').strip("'")
         return value
 
+    # Telegram network: increase timeout if api.telegram.org is slow to reach.
+    telegram_request_timeout: float = Field(default=120.0, ge=30.0)
+    telegram_connect_retries: int = Field(default=5, ge=1)
+    telegram_connect_retry_delay: float = Field(default=3.0, ge=1.0)
+    # Optional SOCKS5/HTTP proxy, e.g. socks5://127.0.0.1:1080
+    telegram_proxy: str | None = None
+    # Optional local Bot API server, e.g. http://127.0.0.1:8081
+    telegram_api_base: str | None = None
+
     lightrag_url: str = "http://10.24.0.101:9621"
     lightrag_api_key: str
     lightrag_query_mode: str = "mix"
@@ -24,13 +33,13 @@ class Settings(BaseSettings):
     embedding_url: str = "http://10.24.0.101:8010"
     embedding_model: str = "BAAI/bge-m3"
 
-    qdrant_url: str = "http://qdrant:6333"
+    qdrant_url: str = "http://127.0.0.1:6333"
     qdrant_api_key: str | None = None
     qdrant_collection: str = "telegram_chat_memory"
     qdrant_connect_retries: int = Field(default=5, ge=1)
     qdrant_connect_retry_delay: float = Field(default=2.0, ge=0.5)
 
-    postgres_host: str = "postgres"
+    postgres_host: str = "127.0.0.1"
     postgres_port: int = 5432
     postgres_db: str = "lightrag_bot"
     postgres_user: str = "lightrag_bot"

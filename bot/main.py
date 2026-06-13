@@ -4,8 +4,8 @@ import asyncio
 import logging
 import sys
 
-from aiogram import Bot, Dispatcher
-from aiogram.client.default import DefaultBotProperties
+from aiogram import Dispatcher
+from aiogram.exceptions import TelegramNetworkError
 from aiogram.types import ErrorEvent
 from aiogram.utils.token import TokenValidationError, validate_token
 
@@ -18,6 +18,7 @@ from services.http_clients import HttpClients
 from services.lightrag import LightRAGClient
 from services.memory import MemoryService
 from services.qdrant_store import QdrantMemoryStore
+from services.telegram_bot import create_bot
 
 logging.basicConfig(
     level=logging.INFO,
@@ -53,8 +54,38 @@ def _require_telegram_token() -> str:
     return token
 
 
+async def _connect_telegram(token: str):
+    bot = create_bot(token)
+    for attempt in range(1, settings.telegram_connect_retries + 1):
+        try:
+            me = await bot.get_me()
+            logger.info("Authorized as @%s (id=%s)", me.username, me.id)
+            return bot
+        except TelegramNetworkError as exc:
+            logger.warning(
+                "Telegram API unreachable (attempt %s/%s): %s",
+                attempt,
+                settings.telegram_connect_retries,
+                exc,
+            )
+            if attempt < settings.telegram_connect_retries:
+                await asyncio.sleep(settings.telegram_connect_retry_delay)
+
+    await bot.session.close()
+    logger.error(
+        "Cannot reach Telegram API (api.telegram.org). "
+        "The bot container has no network route to Telegram.\n"
+        "Fix options:\n"
+        "  1) Use network_mode: host for bot (already set in docker-compose)\n"
+        "  2) Set TELEGRAM_PROXY=socks5://host:port in .env\n"
+        "  3) Set TELEGRAM_API_BASE=http://127.0.0.1:8081 for local Bot API server"
+    )
+    raise SystemExit(1)
+
+
 async def main() -> None:
     token = _require_telegram_token()
+    bot = await _connect_telegram(token)
 
     http = HttpClients()
     repo = await ChatRepository.create()
@@ -64,10 +95,6 @@ async def main() -> None:
     lightrag = LightRAGClient(http.lightrag)
     memory = MemoryService(repo, qdrant, lightrag)
 
-    bot = Bot(
-        token=token,
-        default=DefaultBotProperties(parse_mode=None),
-    )
     dp = Dispatcher()
     dp.message.middleware(LoggingMiddleware())
     dp.message.middleware(MemoryMiddleware(memory))
@@ -76,9 +103,6 @@ async def main() -> None:
     @dp.errors()
     async def on_error(event: ErrorEvent) -> None:
         logger.exception("Unhandled error while processing update: %s", event.exception)
-
-    me = await bot.get_me()
-    logger.info("Authorized as @%s (id=%s)", me.username, me.id)
 
     webhook = await bot.get_webhook_info()
     if webhook.url:

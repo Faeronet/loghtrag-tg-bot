@@ -35,9 +35,11 @@ docker compose up -d --build
 
 | Сервис | Где | Адрес |
 |--------|-----|-------|
-| PostgreSQL | Docker | `postgres:5432` |
-| Qdrant | Docker | `qdrant:6333` |
-| LightRAG API | хост | `host.docker.internal:9621` |
-| bge-m3 embeddings | хост | `host.docker.internal:8010` |
+| PostgreSQL | Docker | `127.0.0.1:5432` |
+| Qdrant | Docker | `127.0.0.1:6333` |
+| LightRAG API | хост | `10.24.0.101:9621` |
+| bge-m3 embeddings | хост | `10.24.0.101:8010` |
 
-PostgreSQL и Qdrant поднимаются в Docker; LightRAG и embedding — на сервере.
+Бот запускается с `network_mode: host` — использует сеть хоста напрямую (нужно для доступа к `api.telegram.org`).
+
+Если Telegram всё равно недоступен, задайте в `.env` прокси: `TELEGRAM_PROXY=socks5://127.0.0.1:1080`
