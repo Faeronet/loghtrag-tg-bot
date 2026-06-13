@@ -4,6 +4,7 @@ import asyncio
 import logging
 import sys
 
+import httpx
 from aiogram import Dispatcher
 from aiogram.exceptions import TelegramNetworkError
 from aiogram.types import ErrorEvent
@@ -54,6 +55,27 @@ def _require_telegram_token() -> str:
     return token
 
 
+async def _wait_for_bot_api() -> None:
+    if not settings.telegram_api_base:
+        return
+    base = settings.telegram_api_base.rstrip("/")
+    for attempt in range(1, 31):
+        try:
+            async with httpx.AsyncClient(timeout=3.0) as client:
+                await client.get(base)
+            logger.info("Telegram Bot API is up at %s", base)
+            return
+        except Exception:
+            logger.info("Waiting for Telegram Bot API at %s (%s/30)...", base, attempt)
+            await asyncio.sleep(2)
+    logger.error(
+        "Telegram Bot API at %s did not start. "
+        "Check TELEGRAM_API_ID/TELEGRAM_API_HASH in .env and run: docker compose logs telegram-bot-api",
+        base,
+    )
+    raise SystemExit(1)
+
+
 async def _connect_telegram(token: str):
     bot = create_bot(token)
     for attempt in range(1, settings.telegram_connect_retries + 1):
@@ -89,6 +111,7 @@ async def _connect_telegram(token: str):
 
 async def main() -> None:
     token = _require_telegram_token()
+    await _wait_for_bot_api()
     bot = await _connect_telegram(token)
 
     http = HttpClients()

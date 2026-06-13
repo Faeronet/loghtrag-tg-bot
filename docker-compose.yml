@@ -37,20 +37,24 @@ services:
   telegram-bot-api:
     image: aiogram/telegram-bot-api:latest
     restart: unless-stopped
-    network_mode: host
     env_file:
       - .env
     environment:
+      TELEGRAM_API_ID: ${TELEGRAM_API_ID}
+      TELEGRAM_API_HASH: ${TELEGRAM_API_HASH}
       TELEGRAM_LOCAL: "1"
       TELEGRAM_HTTP_PROXY: ${TELEGRAM_PROXY:-}
+    ports:
+      - "127.0.0.1:8081:8081"
     volumes:
       - telegram_bot_api_data:/var/lib/telegram-bot-api
     healthcheck:
-      test: ["CMD-SHELL", "bash -c 'exec 3<>/dev/tcp/127.0.0.1/8081'"]
-      interval: 5s
-      timeout: 3s
-      retries: 30
-      start_period: 30s
+      # Alpine-образ без bash/wget — проверяем только порт через busybox nc
+      test: ["CMD-SHELL", "nc -z 127.0.0.1 8081"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 60s
 
   bot:
     build:
@@ -72,7 +76,7 @@ services:
       qdrant:
         condition: service_healthy
       telegram-bot-api:
-        condition: service_healthy
+        condition: service_started
     volumes:
       - ./prompts:/app/prompts:ro
 
