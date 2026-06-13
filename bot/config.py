@@ -43,6 +43,12 @@ class Settings(BaseSettings):
     # Total cap for user_prompt additions (summary + retrieved memories).
     max_memory_context_chars: int = Field(default=2500, ge=500)
 
+    # Concurrency: DB pool and shared HTTP connection limits.
+    postgres_pool_min: int = Field(default=10, ge=1)
+    postgres_pool_max: int = Field(default=100, ge=5)
+    http_max_connections: int = Field(default=200, ge=10)
+    http_max_keepalive: int = Field(default=50, ge=5)
+
     @property
     def postgres_dsn(self) -> str:
         return (

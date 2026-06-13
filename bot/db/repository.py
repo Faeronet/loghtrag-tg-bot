@@ -21,7 +21,11 @@ class ChatRepository:
 
     @classmethod
     async def create(cls) -> ChatRepository:
-        pool = await asyncpg.create_pool(settings.postgres_dsn, min_size=1, max_size=5)
+        pool = await asyncpg.create_pool(
+            settings.postgres_dsn,
+            min_size=settings.postgres_pool_min,
+            max_size=settings.postgres_pool_max,
+        )
         async with pool.acquire() as conn:
             await conn.execute(_SCHEMA_SQL)
         return cls(pool)
@@ -41,21 +45,29 @@ class ChatRepository:
             )
 
     async def add_message(self, chat_id: int, role: str, content: str) -> None:
-        await self.ensure_session(chat_id)
         async with self._pool.acquire() as conn:
-            await conn.execute(
-                """
-                INSERT INTO chat_messages (chat_id, role, content, in_buffer)
-                VALUES ($1, $2, $3, TRUE)
-                """,
-                chat_id,
-                role,
-                content,
-            )
-            await conn.execute(
-                "UPDATE chat_sessions SET updated_at = NOW() WHERE chat_id = $1",
-                chat_id,
-            )
+            async with conn.transaction():
+                await conn.execute(
+                    """
+                    INSERT INTO chat_sessions (chat_id)
+                    VALUES ($1)
+                    ON CONFLICT (chat_id) DO NOTHING
+                    """,
+                    chat_id,
+                )
+                await conn.execute(
+                    """
+                    INSERT INTO chat_messages (chat_id, role, content, in_buffer)
+                    VALUES ($1, $2, $3, TRUE)
+                    """,
+                    chat_id,
+                    role,
+                    content,
+                )
+                await conn.execute(
+                    "UPDATE chat_sessions SET updated_at = NOW() WHERE chat_id = $1",
+                    chat_id,
+                )
 
     async def get_buffer_messages(self, chat_id: int) -> list[Message]:
         async with self._pool.acquire() as conn:

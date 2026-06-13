@@ -6,10 +6,10 @@ from config import settings
 
 
 class LightRAGClient:
-    def __init__(self) -> None:
+    def __init__(self, http_client: httpx.AsyncClient) -> None:
+        self._client = http_client
         self._base = settings.lightrag_url.rstrip("/")
         self._api_key = settings.lightrag_api_key
-        self._timeout = settings.lightrag_timeout
 
     async def query(
         self,
@@ -33,14 +33,13 @@ class LightRAGClient:
             "X-API-Key": self._api_key,
         }
 
-        async with httpx.AsyncClient(timeout=self._timeout) as client:
-            response = await client.post(
-                f"{self._base}/query",
-                json=payload,
-                headers=headers,
-            )
-            response.raise_for_status()
-            data = response.json()
+        response = await self._client.post(
+            f"{self._base}/query",
+            json=payload,
+            headers=headers,
+        )
+        response.raise_for_status()
+        data = response.json()
 
         answer = data.get("response")
         if not isinstance(answer, str) or not answer.strip():

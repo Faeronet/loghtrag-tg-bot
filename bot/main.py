@@ -10,6 +10,7 @@ from config import settings
 from db.repository import ChatRepository
 from handlers.chat import router as chat_router
 from services.embedding import EmbeddingClient
+from services.http_clients import HttpClients
 from services.lightrag import LightRAGClient
 from services.memory import MemoryService
 from services.qdrant_store import QdrantMemoryStore
@@ -22,11 +23,12 @@ logger = logging.getLogger(__name__)
 
 
 async def main() -> None:
+    http = HttpClients()
     repo = await ChatRepository.create()
-    embedding = EmbeddingClient()
+    embedding = EmbeddingClient(http.embedding)
     qdrant = QdrantMemoryStore(embedding)
     await qdrant.ensure_collection()
-    lightrag = LightRAGClient()
+    lightrag = LightRAGClient(http.lightrag)
     memory = MemoryService(repo, qdrant, lightrag)
 
     bot = Bot(
@@ -38,11 +40,17 @@ async def main() -> None:
     dp["memory"] = memory
 
     try:
-        logger.info("Bot started")
+        logger.info(
+            "Bot started (async, postgres pool %s-%s, http connections up to %s)",
+            settings.postgres_pool_min,
+            settings.postgres_pool_max,
+            settings.http_max_connections,
+        )
         await dp.start_polling(bot, memory=memory)
     finally:
         await repo.close()
         await qdrant.close()
+        await http.close()
         await bot.session.close()
 
 

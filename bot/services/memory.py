@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 from dataclasses import dataclass
 
 from config import settings
@@ -53,6 +54,16 @@ class MemoryService:
         self._qdrant = qdrant
         self._lightrag = lightrag
         self._system_prompt = settings.load_system_prompt()
+        self._chat_locks: dict[int, asyncio.Lock] = {}
+        self._locks_guard = asyncio.Lock()
+
+    async def _chat_lock(self, chat_id: int) -> asyncio.Lock:
+        async with self._locks_guard:
+            lock = self._chat_locks.get(chat_id)
+            if lock is None:
+                lock = asyncio.Lock()
+                self._chat_locks[chat_id] = lock
+            return lock
 
     async def prepare_context(self, chat_id: int, user_message: str) -> PreparedContext:
         await self._repo.ensure_session(chat_id)
@@ -82,21 +93,23 @@ class MemoryService:
             pass
 
     async def reset_chat(self, chat_id: int) -> None:
-        await self._repo.reset_chat(chat_id)
-        try:
-            await self._qdrant.delete_chat(chat_id)
-        except Exception:
-            pass
+        async with await self._chat_lock(chat_id):
+            await self._repo.reset_chat(chat_id)
+            try:
+                await self._qdrant.delete_chat(chat_id)
+            except Exception:
+                pass
 
     async def ask(self, chat_id: int, user_message: str) -> str:
-        context = await self.prepare_context(chat_id, user_message)
-        answer = await self._lightrag.query(
-            context.query,
-            user_prompt=context.user_prompt,
-            conversation_history=context.conversation_history or None,
-        )
-        await self.save_exchange(chat_id, user_message, answer)
-        return answer
+        async with await self._chat_lock(chat_id):
+            context = await self.prepare_context(chat_id, user_message)
+            answer = await self._lightrag.query(
+                context.query,
+                user_prompt=context.user_prompt,
+                conversation_history=context.conversation_history or None,
+            )
+            await self.save_exchange(chat_id, user_message, answer)
+            return answer
 
     async def _compress_buffer_if_needed(self, chat_id: int) -> None:
         rows = await self._repo.get_buffer_message_ids(chat_id)
