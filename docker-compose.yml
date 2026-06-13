@@ -33,7 +33,16 @@ services:
       retries: 10
       start_period: 10s
 
-  # Локальный Bot API с поддержкой SOCKS5/HTTP/MTProto прокси для TDLib
+  telegram-bot-api-init:
+    image: ghcr.io/avbor/docker-telegram-bot-api:latest
+    user: root
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - mkdir -p /var/lib/telegram-bot-api/temp && chown -R telegram-bot-api:telegram-bot-api /var/lib/telegram-bot-api
+    volumes:
+      - telegram_bot_api_data:/var/lib/telegram-bot-api
+    restart: "no"
+
   telegram-bot-api:
     image: ghcr.io/avbor/docker-telegram-bot-api:latest
     restart: unless-stopped
@@ -42,19 +51,21 @@ services:
     environment:
       TELEGRAM_API_ID: ${TELEGRAM_API_ID}
       TELEGRAM_API_HASH: ${TELEGRAM_API_HASH}
+      TELEGRAM_PROXY_TYPE: ${TELEGRAM_PROXY_TYPE:-socks5}
+      TELEGRAM_PROXY_HOST: ${TELEGRAM_PROXY_HOST:-}
+      TELEGRAM_PROXY_PORT: ${TELEGRAM_PROXY_PORT:-}
+      TELEGRAM_PROXY_LOGIN: ${TELEGRAM_PROXY_LOGIN:-}
+      TELEGRAM_PROXY_PASSWORD: ${TELEGRAM_PROXY_PASSWORD:-}
     ports:
       - "127.0.0.1:8081:8081"
       - "127.0.0.1:8082:8082"
     volumes:
       - telegram_bot_api_data:/var/lib/telegram-bot-api
-    command:
-      - --local
-      - --http-port=8081
-      - --http-stat-port=8082
-      - --dir=/var/lib/telegram-bot-api
-      - --tdlib-proxy-type=${TELEGRAM_PROXY_TYPE:-socks5}
-      - --proxy-server=${TELEGRAM_PROXY_HOST}
-      - --proxy-port=${TELEGRAM_PROXY_PORT}
+      - ./scripts/telegram-bot-api-entrypoint.sh:/entrypoint-custom.sh:ro
+    entrypoint: ["/bin/sh", "/entrypoint-custom.sh"]
+    depends_on:
+      telegram-bot-api-init:
+        condition: service_completed_successfully
     healthcheck:
       test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:8082/ >/dev/null 2>&1 || exit 1"]
       interval: 15s
@@ -82,7 +93,7 @@ services:
       qdrant:
         condition: service_healthy
       telegram-bot-api:
-        condition: service_started
+        condition: service_healthy
     volumes:
       - ./prompts:/app/prompts:ro
 
