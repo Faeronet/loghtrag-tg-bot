@@ -55,6 +55,12 @@ def _require_telegram_token() -> str:
 
 async def _connect_telegram(token: str):
     bot = create_bot(token)
+    if not settings.telegram_proxy:
+        logger.warning(
+            "TELEGRAM_PROXY is not set — connecting directly to api.telegram.org "
+            "(timeout %ss per attempt)",
+            settings.telegram_request_timeout,
+        )
     for attempt in range(1, settings.telegram_connect_retries + 1):
         logger.info(
             "Connecting to Telegram (attempt %s/%s, timeout %ss)...",

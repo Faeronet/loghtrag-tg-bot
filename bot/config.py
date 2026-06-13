@@ -1,6 +1,7 @@
 from pathlib import Path
+from urllib.parse import quote
 
-from pydantic import Field, field_validator
+from pydantic import Field, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -21,8 +22,31 @@ class Settings(BaseSettings):
     telegram_connect_retries: int = Field(default=5, ge=1)
     telegram_connect_retry_delay: float = Field(default=3.0, ge=1.0)
     telegram_proxy: str | None = None
+    telegram_proxy_type: str = "socks5"
+    telegram_proxy_host: str | None = None
+    telegram_proxy_port: int | None = None
+    telegram_proxy_login: str | None = None
+    telegram_proxy_password: str | None = None
     # Обычно не нужен — бот ходит на https://api.telegram.org
     telegram_api_base: str | None = None
+
+    @model_validator(mode="after")
+    def build_proxy_url(self) -> "Settings":
+        if self.telegram_proxy or not self.telegram_proxy_host or not self.telegram_proxy_port:
+            return self
+        scheme = self.telegram_proxy_type.strip().lower() or "socks5"
+        if scheme == "socks5":
+            # Как curl socks5h — резолвим api.telegram.org на стороне прокси.
+            scheme = "socks5h"
+        auth = ""
+        if self.telegram_proxy_login:
+            user = quote(self.telegram_proxy_login, safe="")
+            password = quote(self.telegram_proxy_password or "", safe="")
+            auth = f"{user}:{password}@"
+        self.telegram_proxy = (
+            f"{scheme}://{auth}{self.telegram_proxy_host}:{self.telegram_proxy_port}"
+        )
+        return self
 
     lightrag_url: str = "http://10.24.0.101:9621"
     lightrag_api_key: str

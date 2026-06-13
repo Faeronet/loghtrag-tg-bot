@@ -22,7 +22,8 @@ def create_bot(token: str) -> Bot:
         session_kwargs["api"] = TelegramAPIServer.from_base(base, is_local=False)
         logger.info("Using Telegram Bot API at %s", base)
     elif settings.telegram_proxy:
-        logger.info("Using api.telegram.org via proxy")
+        # Не логируем URL целиком — там могут быть учётные данные.
+        logger.info("Using api.telegram.org via proxy (TELEGRAM_PROXY*)")
     else:
         logger.info("Using api.telegram.org (direct)")
 
