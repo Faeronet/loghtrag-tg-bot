@@ -6,11 +6,13 @@ import sys
 
 from aiogram import Bot, Dispatcher
 from aiogram.client.default import DefaultBotProperties
+from aiogram.types import ErrorEvent
 from aiogram.utils.token import TokenValidationError, validate_token
 
 from config import settings
 from db.repository import ChatRepository
 from handlers.chat import router as chat_router
+from middlewares.deps import LoggingMiddleware, MemoryMiddleware
 from services.embedding import EmbeddingClient
 from services.http_clients import HttpClients
 from services.lightrag import LightRAGClient
@@ -67,8 +69,21 @@ async def main() -> None:
         default=DefaultBotProperties(parse_mode=None),
     )
     dp = Dispatcher()
+    dp.message.middleware(LoggingMiddleware())
+    dp.message.middleware(MemoryMiddleware(memory))
     dp.include_router(chat_router)
-    dp["memory"] = memory
+
+    @dp.errors()
+    async def on_error(event: ErrorEvent) -> None:
+        logger.exception("Unhandled error while processing update: %s", event.exception)
+
+    me = await bot.get_me()
+    logger.info("Authorized as @%s (id=%s)", me.username, me.id)
+
+    webhook = await bot.get_webhook_info()
+    if webhook.url:
+        logger.warning("Webhook was set to %s — removing for polling mode", webhook.url)
+    await bot.delete_webhook(drop_pending_updates=True)
 
     try:
         logger.info(
@@ -78,7 +93,7 @@ async def main() -> None:
             settings.http_max_connections,
             "on" if qdrant.enabled else "off",
         )
-        await dp.start_polling(bot, memory=memory)
+        await dp.start_polling(bot)
     finally:
         await repo.close()
         await qdrant.close()

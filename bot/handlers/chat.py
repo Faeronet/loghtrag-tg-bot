@@ -14,6 +14,7 @@ router = Router()
 
 @router.message(CommandStart())
 async def cmd_start(message: Message) -> None:
+    logger.info("Handling /start for chat_id=%s", message.chat.id if message.chat else None)
     await message.answer(
         "Привет! Задавай вопросы — я отвечу на основе базы знаний LightRAG.\n"
         "Команды:\n"
@@ -39,6 +40,7 @@ async def handle_text(message: Message, bot: Bot, memory: MemoryService) -> None
     if not user_text:
         return
 
+    logger.info("Processing question for chat_id=%s", chat_id)
     waiting = await message.answer("...")
 
     try:
