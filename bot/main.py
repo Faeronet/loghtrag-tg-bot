@@ -101,10 +101,11 @@ async def _connect_telegram(token: str):
     await bot.session.close()
     logger.error(
         "Cannot connect to Telegram.\n"
-        "If api.telegram.org is blocked on the server:\n"
-        "  1) Set TELEGRAM_API_ID + TELEGRAM_API_HASH (from https://my.telegram.org/apps)\n"
-        "     — telegram-bot-api service is already in docker-compose\n"
-        "  2) Or set TELEGRAM_PROXY=socks5://host:port in .env"
+        "Local Bot API is up, but TDLib cannot reach Telegram servers.\n"
+        "Set TELEGRAM_PROXY in .env (used by telegram-bot-api container), e.g.:\n"
+        "  TELEGRAM_PROXY=socks5://host:port\n"
+        "Then: docker compose up -d --force-recreate telegram-bot-api bot\n"
+        "Check: docker compose logs telegram-bot-api"
     )
     raise SystemExit(1)
 

@@ -13,7 +13,12 @@ logger = logging.getLogger(__name__)
 
 
 def create_bot(token: str) -> Bot:
-    session_kwargs: dict = {"timeout": settings.telegram_request_timeout}
+    timeout = settings.telegram_request_timeout
+    if settings.telegram_api_base:
+        # Local Bot API + TDLib may need more time on first connect.
+        timeout = max(timeout, 60.0)
+
+    session_kwargs: dict = {"timeout": timeout}
     if settings.telegram_proxy:
         session_kwargs["proxy"] = settings.telegram_proxy
     if settings.telegram_api_base:
