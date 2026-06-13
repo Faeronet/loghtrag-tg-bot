@@ -32,20 +32,20 @@ class Settings(BaseSettings):
 
     @model_validator(mode="after")
     def build_proxy_url(self) -> "Settings":
-        if self.telegram_proxy or not self.telegram_proxy_host or not self.telegram_proxy_port:
-            return self
-        scheme = self.telegram_proxy_type.strip().lower() or "socks5"
-        if scheme == "socks5":
-            # Как curl socks5h — резолвим api.telegram.org на стороне прокси.
-            scheme = "socks5h"
-        auth = ""
-        if self.telegram_proxy_login:
-            user = quote(self.telegram_proxy_login, safe="")
-            password = quote(self.telegram_proxy_password or "", safe="")
-            auth = f"{user}:{password}@"
-        self.telegram_proxy = (
-            f"{scheme}://{auth}{self.telegram_proxy_host}:{self.telegram_proxy_port}"
-        )
+        if not self.telegram_proxy and self.telegram_proxy_host and self.telegram_proxy_port:
+            scheme = self.telegram_proxy_type.strip().lower() or "socks5"
+            if scheme == "socks5h":
+                scheme = "socks5"
+            auth = ""
+            if self.telegram_proxy_login:
+                user = quote(self.telegram_proxy_login, safe="")
+                password = quote(self.telegram_proxy_password or "", safe="")
+                auth = f"{user}:{password}@"
+            self.telegram_proxy = (
+                f"{scheme}://{auth}{self.telegram_proxy_host}:{self.telegram_proxy_port}"
+            )
+        if self.telegram_proxy and self.telegram_proxy.startswith("socks5h://"):
+            self.telegram_proxy = "socks5://" + self.telegram_proxy[len("socks5h://") :]
         return self
 
     lightrag_url: str = "http://10.24.0.101:9621"
