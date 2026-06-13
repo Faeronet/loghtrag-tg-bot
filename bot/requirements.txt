@@ -1,0 +1,5 @@
+aiogram==3.17.0
+httpx==0.28.1
+asyncpg==0.30.0
+qdrant-client==1.12.2
+pydantic-settings==2.7.1

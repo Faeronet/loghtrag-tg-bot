@@ -1,0 +1,52 @@
+from __future__ import annotations
+
+import logging
+
+from aiogram import Bot, F, Router
+from aiogram.filters import Command, CommandStart
+from aiogram.types import Message
+
+from services.memory import MemoryService
+
+logger = logging.getLogger(__name__)
+router = Router()
+
+
+@router.message(CommandStart())
+async def cmd_start(message: Message) -> None:
+    await message.answer(
+        "Привет! Задавай вопросы — я отвечу на основе базы знаний LightRAG.\n"
+        "Команды:\n"
+        "/reset — очистить память этого чата"
+    )
+
+
+@router.message(Command("reset"))
+async def cmd_reset(message: Message, memory: MemoryService) -> None:
+    if message.chat is None:
+        return
+    await memory.reset_chat(message.chat.id)
+    await message.answer("Память чата очищена.")
+
+
+@router.message(F.text)
+async def handle_text(message: Message, bot: Bot, memory: MemoryService) -> None:
+    if message.chat is None or not message.text:
+        return
+
+    chat_id = message.chat.id
+    user_text = message.text.strip()
+    if not user_text:
+        return
+
+    waiting = await message.answer("...")
+
+    try:
+        answer = await memory.ask(chat_id, user_text)
+        await waiting.edit_text(answer)
+    except Exception:
+        logger.exception("Failed to process message for chat %s", chat_id)
+        try:
+            await waiting.edit_text("server error")
+        except Exception:
+            await message.answer("server error")
