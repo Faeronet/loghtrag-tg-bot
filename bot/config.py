@@ -21,8 +21,8 @@ class Settings(BaseSettings):
     telegram_connect_retries: int = Field(default=5, ge=1)
     telegram_connect_retry_delay: float = Field(default=3.0, ge=1.0)
     telegram_proxy: str | None = None
+    # Обычно не нужен — бот ходит на https://api.telegram.org
     telegram_api_base: str | None = None
-    telegram_api_local: bool = True
 
     lightrag_url: str = "http://10.24.0.101:9621"
     lightrag_api_key: str

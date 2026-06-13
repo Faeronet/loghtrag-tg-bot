@@ -2,9 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
-import sys
 
-import httpx
 from aiogram import Dispatcher
 from aiogram.exceptions import TelegramNetworkError
 from aiogram.types import ErrorEvent
@@ -55,27 +53,6 @@ def _require_telegram_token() -> str:
     return token
 
 
-async def _wait_for_bot_api() -> None:
-    if not settings.telegram_api_base:
-        return
-    base = settings.telegram_api_base.rstrip("/")
-    for attempt in range(1, 31):
-        try:
-            async with httpx.AsyncClient(timeout=3.0) as client:
-                await client.get(base)
-            logger.info("Telegram Bot API is up at %s", base)
-            return
-        except Exception:
-            logger.info("Waiting for Telegram Bot API at %s (%s/30)...", base, attempt)
-            await asyncio.sleep(2)
-    logger.error(
-        "Telegram Bot API at %s did not start. "
-        "Check TELEGRAM_API_ID/TELEGRAM_API_HASH in .env and run: docker compose logs telegram-bot-api",
-        base,
-    )
-    raise SystemExit(1)
-
-
 async def _connect_telegram(token: str):
     bot = create_bot(token)
     for attempt in range(1, settings.telegram_connect_retries + 1):
@@ -100,19 +77,16 @@ async def _connect_telegram(token: str):
 
     await bot.session.close()
     logger.error(
-        "Cannot connect to Telegram.\n"
-        "Local Bot API is up, but TDLib cannot reach Telegram servers.\n"
-        "Set TELEGRAM_PROXY in .env (used by telegram-bot-api container), e.g.:\n"
-        "  TELEGRAM_PROXY=socks5://host:port\n"
-        "Then: docker compose up -d --force-recreate telegram-bot-api bot\n"
-        "Check: docker compose logs telegram-bot-api"
+        "Cannot connect to Telegram API.\n"
+        "Check TELEGRAM_BOT_TOKEN and network access to api.telegram.org.\n"
+        "If Telegram is blocked, set TELEGRAM_PROXY in .env, e.g.:\n"
+        "  TELEGRAM_PROXY=socks5://host:port"
     )
     raise SystemExit(1)
 
 
 async def main() -> None:
     token = _require_telegram_token()
-    await _wait_for_bot_api()
     bot = await _connect_telegram(token)
 
     http = HttpClients()

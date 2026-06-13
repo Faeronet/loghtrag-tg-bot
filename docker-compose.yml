@@ -33,46 +33,6 @@ services:
       retries: 10
       start_period: 10s
 
-  telegram-bot-api-init:
-    image: ghcr.io/avbor/docker-telegram-bot-api:latest
-    user: root
-    entrypoint: ["/bin/sh", "-c"]
-    command:
-      - mkdir -p /var/lib/telegram-bot-api/temp && chown -R telegram-bot-api:telegram-bot-api /var/lib/telegram-bot-api
-    volumes:
-      - telegram_bot_api_data:/var/lib/telegram-bot-api
-    restart: "no"
-
-  telegram-bot-api:
-    image: ghcr.io/avbor/docker-telegram-bot-api:latest
-    restart: unless-stopped
-    env_file:
-      - .env
-    environment:
-      TELEGRAM_API_ID: ${TELEGRAM_API_ID}
-      TELEGRAM_API_HASH: ${TELEGRAM_API_HASH}
-      TELEGRAM_PROXY_TYPE: ${TELEGRAM_PROXY_TYPE:-socks5}
-      TELEGRAM_PROXY_HOST: ${TELEGRAM_PROXY_HOST:-}
-      TELEGRAM_PROXY_PORT: ${TELEGRAM_PROXY_PORT:-}
-      TELEGRAM_PROXY_LOGIN: ${TELEGRAM_PROXY_LOGIN:-}
-      TELEGRAM_PROXY_PASSWORD: ${TELEGRAM_PROXY_PASSWORD:-}
-    ports:
-      - "127.0.0.1:8081:8081"
-      - "127.0.0.1:8082:8082"
-    volumes:
-      - telegram_bot_api_data:/var/lib/telegram-bot-api
-      - ./scripts/telegram-bot-api-entrypoint.sh:/entrypoint-custom.sh:ro
-    entrypoint: ["/bin/sh", "/entrypoint-custom.sh"]
-    depends_on:
-      telegram-bot-api-init:
-        condition: service_completed_successfully
-    healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:8082/ >/dev/null 2>&1 || exit 1"]
-      interval: 15s
-      timeout: 5s
-      retries: 8
-      start_period: 45s
-
   bot:
     build:
       context: ./bot
@@ -80,19 +40,10 @@ services:
     network_mode: host
     env_file:
       - .env
-    environment:
-      POSTGRES_HOST: 127.0.0.1
-      QDRANT_URL: http://127.0.0.1:6333
-      LIGHTRAG_URL: http://10.24.0.101:9621
-      EMBEDDING_URL: http://10.24.0.101:8010
-      TELEGRAM_API_BASE: http://127.0.0.1:8081
-      TELEGRAM_API_LOCAL: "true"
     depends_on:
       postgres:
         condition: service_healthy
       qdrant:
-        condition: service_healthy
-      telegram-bot-api:
         condition: service_healthy
     volumes:
       - ./prompts:/app/prompts:ro
@@ -100,4 +51,3 @@ services:
 volumes:
   postgres_data:
   qdrant_data:
-  telegram_bot_api_data:
