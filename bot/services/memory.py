@@ -89,7 +89,6 @@ class MemoryService:
         try:
             await self._qdrant.store_turn(chat_id, user_message, assistant_message)
         except Exception:
-            # Long-term memory is best-effort; chat must still work without Qdrant.
             pass
 
     async def reset_chat(self, chat_id: int) -> None:

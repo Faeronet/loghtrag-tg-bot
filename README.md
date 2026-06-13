@@ -31,10 +31,13 @@ docker compose up -d --build
 - `/start` — приветствие
 - `/reset` — очистить память текущего чата (PostgreSQL + Qdrant)
 
-## Внешние сервисы (уже на сервере)
+## Сервисы
 
-- LightRAG API: `10.24.0.101:9621`
-- bge-m3 embeddings: `10.24.0.101:8010`
-- Qdrant: `10.24.0.101:6333`
+| Сервис | Где | Адрес |
+|--------|-----|-------|
+| PostgreSQL | Docker | `postgres:5432` |
+| Qdrant | Docker | `qdrant:6333` |
+| LightRAG API | хост | `host.docker.internal:9621` |
+| bge-m3 embeddings | хост | `host.docker.internal:8010` |
 
-PostgreSQL поднимается в Docker; учётные данные задаются в `.env` на хосте.
+PostgreSQL и Qdrant поднимаются в Docker; LightRAG и embedding — на сервере.

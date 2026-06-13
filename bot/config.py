@@ -17,9 +17,11 @@ class Settings(BaseSettings):
     embedding_url: str = "http://10.24.0.101:8010"
     embedding_model: str = "BAAI/bge-m3"
 
-    qdrant_url: str = "http://10.24.0.101:6333"
+    qdrant_url: str = "http://qdrant:6333"
     qdrant_api_key: str | None = None
     qdrant_collection: str = "telegram_chat_memory"
+    qdrant_connect_retries: int = Field(default=5, ge=1)
+    qdrant_connect_retry_delay: float = Field(default=2.0, ge=0.5)
 
     postgres_host: str = "postgres"
     postgres_port: int = 5432

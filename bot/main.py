@@ -27,7 +27,7 @@ async def main() -> None:
     repo = await ChatRepository.create()
     embedding = EmbeddingClient(http.embedding)
     qdrant = QdrantMemoryStore(embedding)
-    await qdrant.ensure_collection()
+    await qdrant.connect()
     lightrag = LightRAGClient(http.lightrag)
     memory = MemoryService(repo, qdrant, lightrag)
 
@@ -41,10 +41,11 @@ async def main() -> None:
 
     try:
         logger.info(
-            "Bot started (async, postgres pool %s-%s, http connections up to %s)",
+            "Bot started (async, postgres pool %s-%s, http connections up to %s, qdrant=%s)",
             settings.postgres_pool_min,
             settings.postgres_pool_max,
             settings.http_max_connections,
+            "on" if qdrant.enabled else "off",
         )
         await dp.start_polling(bot, memory=memory)
     finally:
