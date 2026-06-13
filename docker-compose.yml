@@ -33,6 +33,25 @@ services:
       retries: 10
       start_period: 10s
 
+  # Локальный Telegram Bot API — обходит блокировку api.telegram.org
+  telegram-bot-api:
+    image: aiogram/telegram-bot-api:latest
+    restart: unless-stopped
+    network_mode: host
+    env_file:
+      - .env
+    environment:
+      TELEGRAM_LOCAL: "1"
+      TELEGRAM_HTTP_PROXY: ${TELEGRAM_PROXY:-}
+    volumes:
+      - telegram_bot_api_data:/var/lib/telegram-bot-api
+    healthcheck:
+      test: ["CMD-SHELL", "bash -c 'exec 3<>/dev/tcp/127.0.0.1/8081'"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+      start_period: 30s
+
   bot:
     build:
       context: ./bot
@@ -45,10 +64,14 @@ services:
       QDRANT_URL: http://127.0.0.1:6333
       LIGHTRAG_URL: http://10.24.0.101:9621
       EMBEDDING_URL: http://10.24.0.101:8010
+      TELEGRAM_API_BASE: http://127.0.0.1:8081
+      TELEGRAM_API_LOCAL: "true"
     depends_on:
       postgres:
         condition: service_healthy
       qdrant:
+        condition: service_healthy
+      telegram-bot-api:
         condition: service_healthy
     volumes:
       - ./prompts:/app/prompts:ro
@@ -56,3 +79,4 @@ services:
 volumes:
   postgres_data:
   qdrant_data:
+  telegram_bot_api_data:

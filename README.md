@@ -40,6 +40,10 @@ docker compose up -d --build
 | LightRAG API | хост | `10.24.0.101:9621` |
 | bge-m3 embeddings | хост | `10.24.0.101:8010` |
 
-Бот запускается с `network_mode: host` — использует сеть хоста напрямую (нужно для доступа к `api.telegram.org`).
+Бот запускается с `network_mode: host` и локальным **telegram-bot-api** (порт 8081).
 
-Если Telegram всё равно недоступен, задайте в `.env` прокси: `TELEGRAM_PROXY=socks5://127.0.0.1:1080`
+### Настройка Telegram (обязательно)
+
+1. Токен бота от [@BotFather](https://t.me/BotFather) → `TELEGRAM_BOT_TOKEN`
+2. `TELEGRAM_API_ID` и `TELEGRAM_API_HASH` с [my.telegram.org/apps](https://my.telegram.org/apps)
+3. Если Telegram заблокирован на сервере — `TELEGRAM_PROXY=socks5://host:port`

@@ -57,28 +57,32 @@ def _require_telegram_token() -> str:
 async def _connect_telegram(token: str):
     bot = create_bot(token)
     for attempt in range(1, settings.telegram_connect_retries + 1):
+        logger.info(
+            "Connecting to Telegram (attempt %s/%s, timeout %ss)...",
+            attempt,
+            settings.telegram_connect_retries,
+            settings.telegram_request_timeout,
+        )
         try:
             me = await bot.get_me()
             logger.info("Authorized as @%s (id=%s)", me.username, me.id)
             return bot
         except TelegramNetworkError as exc:
-            logger.warning(
-                "Telegram API unreachable (attempt %s/%s): %s",
-                attempt,
-                settings.telegram_connect_retries,
-                exc,
-            )
+            logger.warning("Telegram connect failed: %s", exc)
             if attempt < settings.telegram_connect_retries:
+                logger.info(
+                    "Retrying in %ss...",
+                    settings.telegram_connect_retry_delay,
+                )
                 await asyncio.sleep(settings.telegram_connect_retry_delay)
 
     await bot.session.close()
     logger.error(
-        "Cannot reach Telegram API (api.telegram.org). "
-        "The bot container has no network route to Telegram.\n"
-        "Fix options:\n"
-        "  1) Use network_mode: host for bot (already set in docker-compose)\n"
-        "  2) Set TELEGRAM_PROXY=socks5://host:port in .env\n"
-        "  3) Set TELEGRAM_API_BASE=http://127.0.0.1:8081 for local Bot API server"
+        "Cannot connect to Telegram.\n"
+        "If api.telegram.org is blocked on the server:\n"
+        "  1) Set TELEGRAM_API_ID + TELEGRAM_API_HASH (from https://my.telegram.org/apps)\n"
+        "     — telegram-bot-api service is already in docker-compose\n"
+        "  2) Or set TELEGRAM_PROXY=socks5://host:port in .env"
     )
     raise SystemExit(1)
 

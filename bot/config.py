@@ -16,14 +16,13 @@ class Settings(BaseSettings):
             return value.strip().strip('"').strip("'")
         return value
 
-    # Telegram network: increase timeout if api.telegram.org is slow to reach.
-    telegram_request_timeout: float = Field(default=120.0, ge=30.0)
+    # Telegram network
+    telegram_request_timeout: float = Field(default=20.0, ge=5.0)
     telegram_connect_retries: int = Field(default=5, ge=1)
     telegram_connect_retry_delay: float = Field(default=3.0, ge=1.0)
-    # Optional SOCKS5/HTTP proxy, e.g. socks5://127.0.0.1:1080
     telegram_proxy: str | None = None
-    # Optional local Bot API server, e.g. http://127.0.0.1:8081
     telegram_api_base: str | None = None
+    telegram_api_local: bool = True
 
     lightrag_url: str = "http://10.24.0.101:9621"
     lightrag_api_key: str
