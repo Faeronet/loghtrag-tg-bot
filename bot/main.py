@@ -2,9 +2,11 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import sys
 
 from aiogram import Bot, Dispatcher
 from aiogram.client.default import DefaultBotProperties
+from aiogram.utils.token import TokenValidationError, validate_token
 
 from config import settings
 from db.repository import ChatRepository
@@ -21,8 +23,37 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+_PLACEHOLDER_TOKENS = {
+    "",
+    "your_telegram_bot_token",
+    "changeme",
+}
+
+
+def _require_telegram_token() -> str:
+    token = settings.telegram_bot_token
+    if token.lower() in _PLACEHOLDER_TOKENS:
+        logger.error(
+            "TELEGRAM_BOT_TOKEN is not set. "
+            "Create a bot via @BotFather and add to .env:\n"
+            "  TELEGRAM_BOT_TOKEN=123456789:AAHxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+        )
+        raise SystemExit(1)
+    try:
+        validate_token(token)
+    except TokenValidationError:
+        logger.error(
+            "TELEGRAM_BOT_TOKEN has invalid format. "
+            "It must look like 123456789:AAHxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx "
+            "(no quotes, no spaces)."
+        )
+        raise SystemExit(1)
+    return token
+
 
 async def main() -> None:
+    token = _require_telegram_token()
+
     http = HttpClients()
     repo = await ChatRepository.create()
     embedding = EmbeddingClient(http.embedding)
@@ -32,7 +63,7 @@ async def main() -> None:
     memory = MemoryService(repo, qdrant, lightrag)
 
     bot = Bot(
-        token=settings.telegram_bot_token,
+        token=token,
         default=DefaultBotProperties(parse_mode=None),
     )
     dp = Dispatcher()

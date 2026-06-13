@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from pydantic import Field
+from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -8,6 +8,13 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
     telegram_bot_token: str
+
+    @field_validator("telegram_bot_token", mode="before")
+    @classmethod
+    def strip_telegram_token(cls, value: str) -> str:
+        if isinstance(value, str):
+            return value.strip().strip('"').strip("'")
+        return value
 
     lightrag_url: str = "http://10.24.0.101:9621"
     lightrag_api_key: str
