@@ -8,6 +8,7 @@ from aiogram.types import Message
 
 from errors import user_facing_error
 from services.memory import MemoryService
+from utils.telegram_messages import send_long_text
 
 logger = logging.getLogger(__name__)
 router = Router()
@@ -46,11 +47,11 @@ async def handle_text(message: Message, bot: Bot, memory: MemoryService) -> None
 
     try:
         answer = await memory.ask(chat_id, user_text)
-        await waiting.edit_text(answer)
+        await send_long_text(message, waiting, answer)
     except Exception as exc:
         logger.exception("Failed to process message for chat %s", chat_id)
         error_text = user_facing_error(exc)
         try:
-            await waiting.edit_text(error_text)
+            await send_long_text(message, waiting, error_text)
         except Exception:
             await message.answer(error_text)
