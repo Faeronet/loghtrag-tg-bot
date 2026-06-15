@@ -70,6 +70,9 @@ class Settings(BaseSettings):
 
     system_prompt_path: str = "/app/prompts/system_prompt.txt"
 
+    # false — пользователю всегда "server error"; true — текст реальной ошибки
+    show_detailed_errors: bool = False
+
     # Working memory: recent turns sent as conversation_history to LightRAG.
     max_recent_turns: int = Field(default=6, ge=2, le=20)
     max_recent_chars: int = Field(default=4000, ge=500)
